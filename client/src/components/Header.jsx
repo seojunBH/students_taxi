@@ -40,7 +40,7 @@ const Header = ({
 
   return (
     <HeaderContainer>
-      <Logo onClick={() => navigate('/')}>Students Taxi</Logo>
+      <Logo onClick={() => navigate('/')}>Students Taxi 🚕🪢</Logo>
 
       <NavGroup>
         <WriteButton onClick={handleWriteClick}>+ 합승 모집</WriteButton>
@@ -83,7 +83,7 @@ const HeaderContainer = styled.header`
   align-items: center;
   padding: 18px 24px;
   border-bottom: 1px solid #e9ecef;
-  background-color: #fff;
+  background-color: #e6e6e6;
 `
 
 const Logo = styled.h1`
