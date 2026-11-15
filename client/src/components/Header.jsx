@@ -1,129 +1,132 @@
-import { useState, useRef, useEffect } from 'react';
-import styled from 'styled-components';
-import { useNavigate } from 'react-router-dom';
 
-const Header = ({ isLoggedIn, setIsLoggedIn, setCurrentUserId  }) => {
-  const navigate = useNavigate();
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
-  
-  // 드롭다운 바깥 영역 클릭 시 메뉴 닫기
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+import { useState } from 'react'
+import styled from 'styled-components'
+import { useNavigate } from 'react-router-dom'
 
-  // 글쓰기 버튼 클릭
+const Header = ({
+  isLoggedIn,
+  setIsLoggedIn,
+  setCurrentUserId,
+  setCurrentUserGender,
+  setCurrentUserSchool
+}) => {
+  const navigate = useNavigate()
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+
   const handleWriteClick = () => {
-    const hasToken = !!localStorage.getItem('token');
-    if (isLoggedIn || hasToken) {
-      navigate('/write');
+    if (isLoggedIn) {
+      navigate('/write')
     } else {
-      alert('글 작성을 위해 로그인이 필요합니다.');
-      navigate('/login', { state: { redirectTo: '/write' } });
+      alert('게시글 작성을 위해 로그인이 필요합니다.')
+      navigate('/login', { state: { redirectTo: '/write' } })
     }
-  };
+  }
 
-  // 로그아웃 처리
+
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userId');
-    setIsLoggedIn(false);
-    if (setCurrentUserId) setCurrentUserId(null); // 👈 2. App의 state도 초기화
-    alert('로그아웃되었습니다.');
-    navigate('/');
-  };
+    localStorage.removeItem('userId')
+    localStorage.removeItem('userGender')
+    localStorage.removeItem('userSchool')
 
-  // 메뉴 이동 처리 (클릭 시 드롭다운 닫힘)
-  const handleMenuClick = (path) => {
-    setIsDropdownOpen(false);
-    navigate(path);
-  };
+    setIsLoggedIn(false)
+    setCurrentUserId(null)
+    setCurrentUserGender(null)
+    setCurrentUserSchool(null)
+
+    setIsDropdownOpen(false)
+    alert('로그아웃되었습니다.')
+    navigate('/login')
+  }
 
   return (
     <HeaderContainer>
-      <Logo onClick={() => navigate('/')}>school_market</Logo>
-      
-      <NavGroup>
-        <WriteButton onClick={handleWriteClick}>+ 글쓰기</WriteButton>
+      <Logo onClick={() => navigate('/')}>Students Taxi</Logo>
 
-        {isLoggedIn && (
-          <DropdownContainer ref={dropdownRef}>
-            <MyPageButton onClick={() => setIsDropdownOpen((prev) => !prev)}>
+      <NavGroup>
+        <WriteButton onClick={handleWriteClick}>+ 합승 모집</WriteButton>
+
+        {isLoggedIn ? (
+          <DropdownContainer>
+            <MyPageButton onClick={() => setIsDropdownOpen(prev => !prev)}>
               마이페이지 ▼
             </MyPageButton>
 
-            {/* 💡 드롭다운 메뉴 항목 */}
             {isDropdownOpen && (
               <DropdownMenu>
-                <MenuItem onClick={() => handleMenuClick('/mypage/edit')}>
-                  프로필 수정
+                <MenuItem onClick={() => { setIsDropdownOpen(false); navigate('/mypage/edit') }}>
+                  회원정보 수정
                 </MenuItem>
-                <MenuItem onClick={() => handleMenuClick('/mypage/products')}>
-                  판매내역
-                </MenuItem>
-                <MenuItem onClick={() => handleMenuClick('/mypage/buys')}>
-                  구매내역
+                <MenuItem onClick={() => { setIsDropdownOpen(false); navigate('/mypage/products') }}>
+                  내가 작성한 글
                 </MenuItem>
                 <Divider />
-                <LogoutItem onClick={handleLogout}>
-                  로그아웃
-                </LogoutItem>
+                <LogoutItem onClick={handleLogout}>로그아웃</LogoutItem>
               </DropdownMenu>
             )}
           </DropdownContainer>
+        ) : (
+          <AuthGroup>
+            <AuthButton onClick={() => navigate('/login')}>로그인</AuthButton>
+            <AuthButton onClick={() => navigate('/signup')}>회원가입</AuthButton>
+          </AuthGroup>
         )}
       </NavGroup>
     </HeaderContainer>
-  );
-};
+  )
+}
 
-export default Header;
+export default Header
 
-// 🎨 styled-components
 const HeaderContainer = styled.header`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 24px;
+  padding: 18px 24px;
   border-bottom: 1px solid #e9ecef;
   background-color: #fff;
-`;
+`
 
 const Logo = styled.h1`
   margin: 0;
-  font-size: 20px;
-  font-weight: bold;
-  color: #FF6F0F;
+  font-size: 22px;
+  font-weight: 800;
+  color: #2675d8;
   cursor: pointer;
-`;
+`
 
 const NavGroup = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
-`;
+`
 
 const WriteButton = styled.button`
-  background-color: #FF6F0F;
+  background-color: #2675d8;
   color: #fff;
   border: none;
-  padding: 8px 16px;
-  border-radius: 20px;
+  padding: 9px 15px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: bold;
   cursor: pointer;
-`;
+`
 
-/* 💡 드롭다운 스타일 정의 */
+const AuthGroup = styled.div`
+  display: flex;
+  gap: 8px;
+`
+
+const AuthButton = styled.button`
+  padding: 8px 12px;
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 7px;
+  cursor: pointer;
+`
+
 const DropdownContainer = styled.div`
   position: relative;
-`;
+`
 
 const MyPageButton = styled.button`
   background: none;
@@ -133,50 +136,40 @@ const MyPageButton = styled.button`
   font-weight: 600;
   cursor: pointer;
   padding: 8px 4px;
-
-  &:hover {
-    color: #212529;
-  }
-`;
+`
 
 const DropdownMenu = styled.div`
   position: absolute;
   top: 100%;
   right: 0;
   margin-top: 8px;
-  width: 140px;
-  background-color: #fff;
+  width: 150px;
+  background: #fff;
   border: 1px solid #e9ecef;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   padding: 6px 0;
   z-index: 100;
-`;
+`
 
 const MenuItem = styled.div`
   padding: 10px 16px;
   font-size: 14px;
   color: #343a40;
   cursor: pointer;
-  transition: background 0.15s;
 
   &:hover {
-    background-color: #f8f9fa;
-    color: #FF6F0F;
+    background: #f8f9fa;
+    color: #2675d8;
   }
-`;
+`
 
 const Divider = styled.div`
   height: 1px;
-  background-color: #f1f3f5;
+  background: #f1f3f5;
   margin: 4px 0;
-`;
+`
 
 const LogoutItem = styled(MenuItem)`
-  color: #fa5252;
-
-  &:hover {
-    background-color: #fff5f5;
-    color: #e03131;
-  }
-`;
+  color: #e03131;
+`

@@ -1,228 +1,160 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import styled from 'styled-components';
 
-export default function ProductCreatePage() {
-  const navigate = useNavigate();
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
+import styled from 'styled-components'
 
-  // 텍스트 폼 상태
+const ProductCreatePage = () => {
+  const navigate = useNavigate()
+
   const [formData, setFormData] = useState({
     title: '',
-    type: 'SELL',
-    category: '서적',
-    price: 0,
-    location: '',
     description: '',
-  });
+    departure: '',
+    destination: '',
+    departure_time: '',
+    max_people: '3',
+    estimated_fare: ''
+  })
 
-  // 파일 및 미리보기 상태
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false)
 
-  // 텍스트 입력 처리
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
+    const { name, value } = e.target
+    setFormData(prev => ({
       ...prev,
-      [name]: name === 'price' ? Number(value) : value,
-    }));
-  };
+      [name]: value
+    }))
+  }
 
-  // 거래 유형 변경
-  const handleTypeChange = (typeValue) => {
-    setFormData((prev) => ({
-      ...prev,
-      type: typeValue,
-      price: typeValue === 'FREE' ? 0 : prev.price,
-    }));
-  };
-
-  // 파일 선택 및 미리보기 생성 처리
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImageFile(file);
-      // FileReader로 로컬 이미지 미리보기 URL 생성
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // 폼 제출 (FormData 활용)
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault()
 
-    // 💡 localStorage에서 로그인한 유저의 ID 가져오기
-    const sellerId = localStorage.getItem('userId');
-    console.log(sellerId)
-    if (!sellerId) {
-      alert('로그인이 필요한 서비스입니다.');
-      navigate('/login');
-      return;
+    const userId = localStorage.getItem('userId')
+
+    if (!userId) {
+      alert('로그인이 필요한 서비스입니다.')
+      navigate('/login')
+      return
     }
 
-    if (!formData.title.trim() || !formData.description.trim() || !formData.location.trim()) {
-      alert('필수 입력 항목을 모두 확인해 주세요.');
-      return;
+    if (formData.departure.trim() === formData.destination.trim()) {
+      alert('출발지와 도착지는 달라야 합니다.')
+      return
     }
 
     try {
-      // loading 상태일때 제출 버튼을 비활성화하여 이중 클릭 방지
-      setLoading(true);
+      setLoading(true)
 
-      // 파일 업로드를 위한 FormData 객체 생성
-      const uploadData = new FormData();
-      uploadData.append('title', formData.title);
-      uploadData.append('type', formData.type);
-      uploadData.append('category', formData.category);
-      uploadData.append('price', formData.price);
-      uploadData.append('location', formData.location);
-      uploadData.append('description', formData.description);
-      uploadData.append('sellerId', sellerId);
+      await axios.post('/api/ride-posts', {
+        user_id: Number(userId),
+        title: formData.title.trim(),
+        description: formData.description.trim() || null,
+        departure: formData.departure.trim(),
+        destination: formData.destination.trim(),
+        departure_time: formData.departure_time || null,
+        max_people: Number(formData.max_people),
+        estimated_fare: formData.estimated_fare === ''
+          ? null
+          : Number(formData.estimated_fare)
+      })
 
-      // 파일이 선택된 경우에만 'image' 파라미터로 추가
-      if (imageFile) {
-        uploadData.append('image', imageFile);
-      }
-      
-      const response = await axios.post('/api/products', uploadData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      console.log("등록성공:", response.data);
-      alert('상품이 성공적으로 등록되었습니다!');
-      navigate('/', { replace: true });
+      alert('합승 모집 글이 등록되었습니다.')
+      navigate('/')
     } catch (error) {
-      console.error('상품 등록 실패:', error);
-      alert(error.response?.data?.message || '상품 등록 중 오류가 발생했습니다.');
+      alert(error.response?.data?.message || '게시글 등록에 실패했습니다.')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <Container>
-      <Title>🛍️ 스쿨마켓 상품 등록</Title>
-      <Form onSubmit={handleSubmit}>
-        
-        {/* 거래 유형 */}
-        <FormGroup>
-          <Label>거래 유형</Label>
-          <RadioGroup>
-            <TypeButton
-              type="button"
-              $active={formData.type === 'SELL'}
-              onClick={() => handleTypeChange('SELL')}
-            >
-              💵 판매하기
-            </TypeButton>
-            <TypeButton
-              type="button"
-              $active={formData.type === 'FREE'}
-              onClick={() => handleTypeChange('FREE')}
-            >
-              🎁 무료나눔
-            </TypeButton>
-          </RadioGroup>
-        </FormGroup>
+      <Title>합승 모집 글 작성</Title>
+      <Description>함께 이동할 학생을 모집해 보세요.</Description>
 
-        {/* 상품 제목 */}
+      <Form onSubmit={handleSubmit}>
         <FormGroup>
-          <Label htmlFor="title">상품 제목 *</Label>
+          <Label>제목 *</Label>
           <Input
-            id="title"
-            type="text"
             name="title"
-            placeholder="예: 깨끗하게 쓴 확률과 통계 교재 파급니다"
             value={formData.title}
             onChange={handleChange}
+            placeholder="예: 홍대입구역 방향 택시 같이 타요"
+            maxLength="100"
             required
           />
         </FormGroup>
 
-        {/* 카테고리 & 가격 */}
-        <Row>
-          <FormGroup style={{ flex: 1 }}>
-            <Label htmlFor="category">카테고리</Label>
-            <Select
-              id="category"
-              name="category"
-              value={formData.category}
-              onChange={handleChange}
-            >
-              <option value="서적">서적</option>
-              <option value="교복">교복</option>
-              <option value="학용품">학용품</option>
-              <option value="기타">기타</option>
-            </Select>
-          </FormGroup>
-
-          <FormGroup style={{ flex: 1 }}>
-            <Label htmlFor="price">가격 (원) *</Label>
-            <Input
-              id="price"
-              type="number"
-              name="price"
-              min="0"
-              step="500"
-              disabled={formData.type === 'FREE'}
-              value={formData.price}
-              onChange={handleChange}
-            />
-          </FormGroup>
-        </Row>
-
-        {/* 📷 이미지 파일 업로드 & 미리보기 */}
         <FormGroup>
-          <Label htmlFor="image">상품 이미지 선택</Label>
-          <FileInput
-            id="image"
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
+          <Label>출발지 *</Label>
+          <Input
+            name="departure"
+            value={formData.departure}
+            onChange={handleChange}
+            placeholder="예: 학교 정문"
+            required
           />
-          {imagePreview && (
-            <ImagePreviewContainer>
-              <PreviewImage src={imagePreview} alt="선택한 상품 미리보기" />
-            </ImagePreviewContainer>
-          )}
         </FormGroup>
 
-        {/* 교내 거래 장소 */}
         <FormGroup>
-          <Label htmlFor="location">교내 거래 희망 장소 *</Label>
+          <Label>도착지 *</Label>
           <Input
-            id="location"
-            type="text"
-            name="location"
-            placeholder="예: 1층 중앙현관, 체육관 앞, 도서관 매점 앞"
-            value={formData.location}
+            name="destination"
+            value={formData.destination}
+            onChange={handleChange}
+            placeholder="예: 홍대입구역"
+            required
+          />
+        </FormGroup>
+
+        <FormGroup>
+          <Label>출발 예정 시간</Label>
+          <Input
+            name="departure_time"
+            type="datetime-local"
+            value={formData.departure_time}
+            onChange={handleChange}
+          />
+        </FormGroup>
+
+        <FormGroup>
+          <Label>최대 탑승 인원 *</Label>
+          <Input
+            name="max_people"
+            type="number"
+            min="1"
+            max="10"
+            value={formData.max_people}
             onChange={handleChange}
             required
           />
+          <HelpText>작성자도 탑승 인원에 포함됩니다.</HelpText>
         </FormGroup>
 
-        {/* 상세 설명 */}
         <FormGroup>
-          <Label htmlFor="description">상품 상세 설명 *</Label>
+          <Label>예상 택시 요금 (원)</Label>
+          <Input
+            name="estimated_fare"
+            type="number"
+            min="0"
+            value={formData.estimated_fare}
+            onChange={handleChange}
+            placeholder="모르면 비워 두세요."
+          />
+        </FormGroup>
+
+        <FormGroup>
+          <Label>상세 설명</Label>
           <TextArea
-            id="description"
             name="description"
             rows="5"
-            placeholder="물품의 상태, 사용 기간, 거래 가능 시간 등을 자세히 작성해 주세요."
             value={formData.description}
             onChange={handleChange}
-            required
+            placeholder="추가로 전달할 내용을 작성해 주세요."
           />
         </FormGroup>
 
-        {/* 버튼 영역 */}
         <ButtonGroup>
           <CancelButton
             type="button"
@@ -232,208 +164,114 @@ export default function ProductCreatePage() {
             취소
           </CancelButton>
           <SubmitButton type="submit" disabled={loading}>
-            {loading ? '등록 중...' : '상품 등록하기'}
+            {loading ? '등록 중...' : '모집 글 등록'}
           </SubmitButton>
         </ButtonGroup>
-
       </Form>
     </Container>
-  );
+  )
 }
 
-/* ==========================================================================
-   styled-components 스타일 정의
-   ========================================================================== */
+export default ProductCreatePage
 
 const Container = styled.div`
+  width: 100%;
   max-width: 600px;
   margin: 30px auto;
-  padding: 25px;
-  background-color: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-`;
+  padding: 25px 20px;
+`
 
 const Title = styled.h2`
-  text-align: center;
-  margin-bottom: 20px;
-  color: #333333;
-`;
+  margin: 0 0 8px;
+  color: #212529;
+  font-size: 22px;
+`
+
+const Description = styled.p`
+  margin: 0 0 25px;
+  color: #868e96;
+  font-size: 14px;
+`
 
 const Form = styled.form`
   display: flex;
   flex-direction: column;
-  gap: 15px;
-`;
+  gap: 18px;
+`
 
 const FormGroup = styled.div`
   display: flex;
   flex-direction: column;
-`;
-
-const Row = styled.div`
-  display: flex;
-  gap: 12px;
-`;
+  gap: 7px;
+`
 
 const Label = styled.label`
-  font-weight: bold;
-  margin-bottom: 6px;
   font-size: 14px;
-  color: #444444;
-`;
+  font-weight: 700;
+  color: #495057;
+`
 
 const Input = styled.input`
-  padding: 10px 12px;
-  border-radius: 6px;
-  border: 1px solid #cccccc;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid #ced4da;
+  border-radius: 7px;
   font-size: 14px;
-  outline: none;
 
   &:focus {
-    border-color: #4a90e2;
+    outline: none;
+    border-color: #2675d8;
   }
-
-  &:disabled {
-    background-color: #f2f2f2;
-    cursor: not-allowed;
-  }
-`;
-
-const FileInput = styled.input`
-  font-size: 14px;
-  color: #555555;
-
-  &::file-selector-button {
-    padding: 8px 16px;
-    margin-right: 12px;
-    border-radius: 6px;
-    border: 1px solid #cccccc;
-    background-color: #f8f9fa;
-    cursor: pointer;
-
-    &:hover {
-      background-color: #e2e6ea;
-    }
-  }
-`;
-
-const ImagePreviewContainer = styled.div`
-  margin-top: 10px;
-  width: 100%;
-  max-height: 250px;
-  overflow: hidden;
-  border-radius: 8px;
-  border: 1px solid #eee;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #fafafa;
-`;
-
-const PreviewImage = styled.img`
-  width: 100%;
-  height: 200px;
-  object-fit: contain;
-`;
-
-const Select = styled.select`
-  padding: 10px 12px;
-  border-radius: 6px;
-  border: 1px solid #cccccc;
-  font-size: 14px;
-  background-color: #ffffff;
-  outline: none;
-
-  &:focus {
-    border-color: #4a90e2;
-  }
-`;
+`
 
 const TextArea = styled.textarea`
-  padding: 10px 12px;
-  border-radius: 6px;
-  border: 1px solid #cccccc;
+  padding: 12px;
+  border: 1px solid #ced4da;
+  border-radius: 7px;
   font-size: 14px;
   resize: vertical;
-  outline: none;
+  font-family: inherit;
 
   &:focus {
-    border-color: #4a90e2;
+    outline: none;
+    border-color: #2675d8;
   }
-`;
+`
 
-const RadioGroup = styled.div`
-  display: flex;
-  gap: 10px;
-`;
-
-const TypeButton = styled.button`
-  flex: 1;
-  padding: 10px;
-  font-size: 14px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-
-  ${(props) =>
-    props.$active
-      ? `
-        border: 2px solid #4A90E2;
-        background-color: #EBF3FF;
-        color: #4A90E2;
-        font-weight: bold;
-      `
-      : `
-        border: 1px solid #cccccc;
-        background-color: #f8f9fa;
-        color: #333333;
-      `}
-`;
+const HelpText = styled.span`
+  font-size: 12px;
+  color: #868e96;
+`
 
 const ButtonGroup = styled.div`
   display: flex;
-  justify-content: space-between;
   gap: 10px;
-  margin-top: 10px;
-`;
+  margin-top: 8px;
+`
 
 const CancelButton = styled.button`
   flex: 1;
-  padding: 12px;
-  border: none;
-  background-color: #e0e0e0;
-  color: #333333;
-  border-radius: 6px;
+  padding: 13px;
+  border: 1px solid #dee2e6;
+  background: #fff;
+  color: #495057;
+  border-radius: 7px;
+  font-weight: 600;
   cursor: pointer;
-  font-weight: bold;
-
-  &:hover {
-    background-color: #d0d0d0;
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
-`;
+`
 
 const SubmitButton = styled.button`
   flex: 2;
-  padding: 12px;
+  padding: 13px;
   border: none;
-  background-color: #4a90e2;
-  color: #ffffff;
-  border-radius: 6px;
+  background: #2675d8;
+  color: #fff;
+  border-radius: 7px;
+  font-weight: 700;
   cursor: pointer;
-  font-weight: bold;
-
-  &:hover {
-    background-color: #357abd;
-  }
 
   &:disabled {
-    background-color: #a0c4ed;
-    cursor: not-allowed;
+    opacity: 0.6;
   }
-`;
+`

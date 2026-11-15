@@ -1,425 +1,260 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import styled from 'styled-components';
 
-const ProductEditPage = ()=>{
-  const { id } = useParams();
-  const navigate = useNavigate();
+import { useEffect, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import axios from 'axios'
+import styled from 'styled-components'
 
-  // 폼 입력 상태
-  const [title, setTitle] = useState('');
-  const [type, setType] = useState('SELL'); // 'SELL' 또는 'FREE'
-  const [category, setCategory] = useState('');
-  const [price, setPrice] = useState('');
-  const [location, setLocation] = useState('');
-  const [description, setDescription] = useState('');
+const ProductEditPage = () => {
+  const { id } = useParams()
+  const navigate = useNavigate()
 
-  // 이미지 처리 상태 (기존 이미지 URL + 새 첨부 파일)
-  const [existingImageUrl, setExistingImageUrl] = useState('');
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState('');
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    departure: '',
+    destination: '',
+    departure_time: '',
+    max_people: '',
+    current_people: '',
+    estimated_fare: ''
+  })
 
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
 
-  // 1. 기존 상품 정보 불러오기
   useEffect(() => {
-    const fetchProduct = async () => {
+    const fetchPost = async () => {
       try {
-        setLoading(true);
-        const response = await axios.get(`/api/products/${id}`);
-        const data = response.data;
+        const response = await axios.get(`/api/ride-posts/${id}`)
+        const data = response.data
 
-        setTitle(data.title || '');
-        setType(data.type || 'SELL');
-        setCategory(data.category || '');
-        setPrice(data.price ? String(data.price) : '');
-        setLocation(data.location || '');
-        setDescription(data.description || '');
-
-        const img = data.imageUrl || data.image_url || '';
-        setExistingImageUrl(img);
-        setImagePreview(img);
-      } catch (err) {
-        console.error('상품 정보 로드 실패:', err);
-        alert('상품 정보를 불러오는데 실패했습니다.');
-        navigate(-1);
+        setFormData({
+          title: data.title || '',
+          description: data.description || '',
+          departure: data.departure || '',
+          destination: data.destination || '',
+          departure_time: data.departure_time
+            ? new Date(data.departure_time).toISOString().slice(0, 16)
+            : '',
+          max_people: String(data.max_people ?? ''),
+          current_people: String(data.current_people ?? ''),
+          estimated_fare: data.estimated_fare == null
+            ? ''
+            : String(data.estimated_fare)
+        })
+      } catch (error) {
+        alert(error.response?.data?.message || '게시글을 불러오지 못했습니다.')
+        navigate(-1)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
-
-    fetchProduct();
-  }, [id, navigate]);
-
-  // 이미지 변경 파일 선택
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
     }
-  };
 
-  // 2. 수정 제출 (FormData 전송)
+    fetchPost()
+  }, [id, navigate])
+
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault()
 
-    if (!title.trim() || !category || !location.trim()) {
-      alert('필수 항목(제목, 카테고리, 거래 장소)을 입력해 주세요.');
-      return;
+    const userId = localStorage.getItem('userId')
+
+    if (formData.departure.trim() === formData.destination.trim()) {
+      alert('출발지와 도착지는 달라야 합니다.')
+      return
     }
 
-    if (type === 'SELL' && (!price || Number(price) <= 0)) {
-      alert('판매 가격을 올바르게 입력해 주세요.');
-      return;
+    if (Number(formData.current_people) > Number(formData.max_people)) {
+      alert('최대 인원은 현재 인원보다 작을 수 없습니다.')
+      return
     }
 
     try {
-      setSubmitting(true);
-      const formData = new FormData();
-      formData.append('title', title);
-      formData.append('type', type);
-      formData.append('category', category);
-      formData.append('price', type === 'FREE' ? 0 : price);
-      formData.append('location', location);
-      formData.append('description', description);
+      setSubmitting(true)
 
-      // 새로운 이미지를 선택했을 때만 파일 첨부
-      if (imageFile) {
-        formData.append('image', imageFile);
-      }
+      await axios.put(`/api/ride-posts/${id}`, {
+        user_id: Number(userId),
+        title: formData.title.trim(),
+        description: formData.description.trim() || null,
+        departure: formData.departure.trim(),
+        destination: formData.destination.trim(),
+        departure_time: formData.departure_time || null,
+        max_people: Number(formData.max_people),
+        current_people: Number(formData.current_people),
+        estimated_fare: formData.estimated_fare === ''
+          ? null
+          : Number(formData.estimated_fare)
+      })
 
-      // 서버로 PUT 요청 전송
-      await axios.put(`/api/products/${id}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
-      alert('상품 정보가 수정되었습니다.');
-      navigate(`/product/${id}`, { replace: true });
-    } catch (err) {
-      console.error('상품 수정 실패:', err);
-      alert(err.response?.data?.message || '수정에 실패했습니다.');
+      alert('게시글이 수정되었습니다.')
+      navigate(`/product/${id}`, { replace: true })
+    } catch (error) {
+      alert(error.response?.data?.message || '게시글 수정에 실패했습니다.')
     } finally {
-      setSubmitting(false);
+      setSubmitting(false)
     }
-  };
+  }
 
   if (loading) {
-    return (
-      <Container>
-        <StatusMessage>기존 상품 정보를 불러오는 중...</StatusMessage>
-      </Container>
-    );
+    return <Message>게시글 정보를 불러오는 중...</Message>
   }
 
   return (
     <Container>
-      <HeaderBar>
-        <Title>상품 정보 수정</Title>
-        <CancelButton onClick={() => navigate(-1)}>취소</CancelButton>
-      </HeaderBar>
+      <Title>모집 글 수정</Title>
 
       <Form onSubmit={handleSubmit}>
-        {/* 거래 유형 (판매 / 나눔) */}
-        <FormGroup>
-          <Label>거래 유형</Label>
-          <RadioGroup>
-            <RadioLabel $active={type === 'SELL'}>
-              <input
-                type="radio"
-                name="type"
-                value="SELL"
-                checked={type === 'SELL'}
-                onChange={(e) => setType(e.target.value)}
-              />
-              💵 판매하기
-            </RadioLabel>
-            <RadioLabel $active={type === 'FREE'}>
-              <input
-                type="radio"
-                name="type"
-                value="FREE"
-                checked={type === 'FREE'}
-                onChange={(e) => {
-                  setType(e.target.value);
-                  setPrice('0');
-                }}
-              />
-              🎁 무료나눔
-            </RadioLabel>
-          </RadioGroup>
-        </FormGroup>
+        <Label>제목 *</Label>
+        <Input name="title" value={formData.title} onChange={handleChange} required />
 
-        {/* 상품 대표 이미지 변경 */}
-        <FormGroup>
-          <Label>상품 이미지</Label>
-          <ImageUploadArea>
-            {imagePreview ? (
-              <PreviewImage src={imagePreview} alt="미리보기" />
-            ) : (
-              <NoImagePreview>등록된 이미지 없음</NoImagePreview>
-            )}
-            <FileInputLabel htmlFor="image-input">이미지 변경하기</FileInputLabel>
-            <HiddenInput
-              id="image-input"
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-            />
-          </ImageUploadArea>
-        </FormGroup>
+        <Label>출발지 *</Label>
+        <Input name="departure" value={formData.departure} onChange={handleChange} required />
 
-        {/* 제목 */}
-        <FormGroup>
-          <Label>제목 *</Label>
-          <Input
-            type="text"
-            placeholder="상품 제목을 입력하세요"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-          />
-        </FormGroup>
+        <Label>도착지 *</Label>
+        <Input name="destination" value={formData.destination} onChange={handleChange} required />
 
-        {/* 카테고리 */}
-        <FormGroup>
-          <Label>카테고리 *</Label>
-          <Select value={category} onChange={(e) => setCategory(e.target.value)} required>
-            <option value="서적">서적</option>
-            <option value="교복">교복</option>
-            <option value="학용품">학용품</option>
-            <option value="기타">기타</option>
-          </Select>
-        </FormGroup>
+        <Label>출발 예정 시간</Label>
+        <Input
+          type="datetime-local"
+          name="departure_time"
+          value={formData.departure_time}
+          onChange={handleChange}
+        />
 
-        {/* 가격 */}
-        {type === 'SELL' && (
-          <FormGroup>
-            <Label>판매 가격 (원) *</Label>
-            <Input
-              type="number"
-              placeholder="가격을 입력하세요"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              required
-            />
-          </FormGroup>
-        )}
+        <Label>최대 탑승 인원 *</Label>
+        <Input
+          type="number"
+          name="max_people"
+          min="1"
+          value={formData.max_people}
+          onChange={handleChange}
+          required
+        />
 
-        {/* 희망 거래 장소 */}
-        <FormGroup>
-          <Label>희망 거래 장소 *</Label>
-          <Input
-            type="text"
-            placeholder="예: 강남역 3번 출구 앞"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            required
-          />
-        </FormGroup>
+        <Label>현재 탑승 인원 *</Label>
+        <Input
+          type="number"
+          name="current_people"
+          min="1"
+          value={formData.current_people}
+          onChange={handleChange}
+          required
+        />
 
-        {/* 상세 설명 */}
-        <FormGroup>
-          <Label>상품 상세 설명</Label>
-          <Textarea
-            rows="6"
-            placeholder="상품의 상태, 구매 시기, 하자 유무 등을 상세히 적어주세요."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </FormGroup>
+        <Label>예상 요금</Label>
+        <Input
+          type="number"
+          name="estimated_fare"
+          min="0"
+          value={formData.estimated_fare}
+          onChange={handleChange}
+        />
 
-        <SubmitButton type="submit" disabled={submitting}>
-          {submitting ? '수정 중...' : '수정 완료'}
-        </SubmitButton>
+        <Label>상세 설명</Label>
+        <TextArea
+          name="description"
+          rows="5"
+          value={formData.description}
+          onChange={handleChange}
+        />
+
+        <ButtonGroup>
+          <CancelButton type="button" onClick={() => navigate(-1)}>
+            취소
+          </CancelButton>
+          <SubmitButton type="submit" disabled={submitting}>
+            {submitting ? '수정 중...' : '수정 완료'}
+          </SubmitButton>
+        </ButtonGroup>
       </Form>
     </Container>
-  );
+  )
 }
 
-
-export default ProductEditPage;
-
-/* ==========================================
-   Styled Components
-   ========================================== */
+export default ProductEditPage
 
 const Container = styled.div`
+  width: 100%;
   max-width: 600px;
-  margin: 0 auto;
-  padding: 40px 20px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-`;
-
-const StatusMessage = styled.div`
-  text-align: center;
-  padding: 60px 0;
-  color: #666;
-`;
-
-const HeaderBar = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-`;
+  margin: 30px auto;
+  padding: 25px 20px;
+`
 
 const Title = styled.h2`
-  font-size: 20px;
-  font-weight: 700;
+  margin: 0 0 25px;
   color: #212529;
-  margin: 0;
-`;
-
-const CancelButton = styled.button`
-  background: none;
-  border: none;
-  color: #868e96;
-  font-size: 14px;
-  cursor: pointer;
-  &:hover {
-    color: #212529;
-  }
-`;
+`
 
 const Form = styled.form`
   display: flex;
   flex-direction: column;
-  gap: 20px;
-`;
-
-const FormGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`;
+  gap: 10px;
+`
 
 const Label = styled.label`
+  margin-top: 8px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: #495057;
-`;
-
-const RadioGroup = styled.div`
-  display: flex;
-  gap: 12px;
-`;
-
-const RadioLabel = styled.label`
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px;
-  border: 1px solid ${(props) => (props.$active ? '#228be6' : '#ced4da')};
-  background-color: ${(props) => (props.$active ? '#e7f5ff' : '#ffffff')};
-  color: ${(props) => (props.$active ? '#1c7ed6' : '#495057')};
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-
-  input {
-    display: none;
-  }
-`;
-
-const ImageUploadArea = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 16px;
-`;
-
-const PreviewImage = styled.img`
-  width: 100px;
-  height: 100px;
-  object-fit: cover;
-  border-radius: 8px;
-  border: 1px solid #e9ecef;
-`;
-
-const NoImagePreview = styled.div`
-  width: 100px;
-  height: 100px;
-  border-radius: 8px;
-  background-color: #f1f3f5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  color: #adb5bd;
-`;
-
-const FileInputLabel = styled.label`
-  padding: 8px 16px;
-  background-color: #f1f3f5;
-  color: #495057;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  &:hover {
-    background-color: #e9ecef;
-  }
-`;
-
-const HiddenInput = styled.input`
-  display: none;
-`;
+`
 
 const Input = styled.input`
+  box-sizing: border-box;
+  width: 100%;
   padding: 12px;
   border: 1px solid #ced4da;
-  border-radius: 8px;
+  border-radius: 7px;
   font-size: 14px;
-  &:focus {
-    outline: none;
-    border-color: #228be6;
-  }
-`;
+`
 
-const Select = styled.select`
+const TextArea = styled.textarea`
   padding: 12px;
   border: 1px solid #ced4da;
-  border-radius: 8px;
+  border-radius: 7px;
   font-size: 14px;
-  background-color: #ffffff;
-  &:focus {
-    outline: none;
-    border-color: #228be6;
-  }
-`;
-
-const Textarea = styled.textarea`
-  padding: 12px;
-  border: 1px solid #ced4da;
-  border-radius: 8px;
-  font-size: 14px;
-  resize: vertical;
   font-family: inherit;
-  &:focus {
-    outline: none;
-    border-color: #228be6;
-  }
-`;
+  resize: vertical;
+`
+
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+`
+
+const CancelButton = styled.button`
+  flex: 1;
+  padding: 13px;
+  border: 1px solid #dee2e6;
+  border-radius: 7px;
+  background: white;
+  cursor: pointer;
+`
 
 const SubmitButton = styled.button`
-  width: 100%;
-  padding: 14px;
-  background-color: #228be6;
-  color: #ffffff;
+  flex: 2;
+  padding: 13px;
   border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
+  border-radius: 7px;
+  background: #2675d8;
+  color: white;
+  font-weight: 700;
   cursor: pointer;
-  margin-top: 10px;
-  &:hover {
-    background-color: #1c7ed6;
-  }
+
   &:disabled {
-    background-color: #adb5bd;
-    cursor: not-allowed;
+    opacity: 0.6;
   }
-`;
+`
+
+const Message = styled.div`
+  padding: 60px 20px;
+  text-align: center;
+  color: #868e96;
+`

@@ -1,378 +1,312 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
-import axios from 'axios';
-import styled from 'styled-components';
 
-const ProductDetailPage = ()=>{
-  const { isLoggedIn, currentUserId } = useOutletContext();
-  const { id } = useParams();
-  const navigate = useNavigate();
+import { useEffect, useState } from 'react'
+import { useParams, useNavigate, useOutletContext } from 'react-router-dom'
+import axios from 'axios'
+import styled from 'styled-components'
 
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+const ProductDetailPage = () => {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const {
+    isLoggedIn,
+    currentUserId,
+    currentUserGender,
+    currentUserSchool
+  } = useOutletContext()
 
+  const [post, setPost] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchProduct = async () => {
+    const fetchPost = async () => {
       try {
-        setLoading(true);
-        const response = await axios.get(`/api/products/${id}`);
-        setProduct(response.data);
-      } catch (err) {
-        console.error('상품 정보 불러오기 실패:', err);
-        setError('상품을 불러오는 중 오류가 발생했습니다.');
+        const response = await axios.get(`/api/ride-posts/${id}`)
+        setPost(response.data)
+      } catch (error) {
+        alert(error.response?.data?.message || '게시글을 불러오지 못했습니다.')
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    fetchProduct();
-  }, [id]);
+    fetchPost()
+  }, [id])
 
-  // 삭제 처리
   const handleDelete = async () => {
-    if (!window.confirm('정말로 이 상품 글을 삭제하시겠습니까?')) return;
+    if (!window.confirm('정말 이 모집 글을 삭제할까요?')) return
 
     try {
-      await axios.delete(`/api/products/${id}`);
-      alert('상품이 삭제되었습니다.');
-      navigate('/', { replace: true });
-    } catch (err) {
-      console.error('삭제 실패:', err);
-      alert(err.response?.data?.message || '삭제 작업에 실패했습니다.');
+      await axios.delete(`/api/ride-posts/${id}`, {
+        data: {
+          user_id: Number(currentUserId)
+        }
+      })
+
+      alert('게시글이 삭제되었습니다.')
+      navigate('/', { replace: true })
+    } catch (error) {
+      alert(error.response?.data?.message || '게시글 삭제에 실패했습니다.')
     }
-  };
+  }
 
   if (loading) {
-    return (
-      <Container>
-        <StatusMessage>상품 정보를 불러오는 중...</StatusMessage>
-      </Container>
-    );
+    return <Message>게시글을 불러오는 중...</Message>
   }
 
-  if (error || !product) {
-    return (
-      <Container>
-        <StatusMessage>{error || '존재하지 않는 상품입니다.'}</StatusMessage>
-      </Container>
-    );
+  if (!post) {
+    return <Message>게시글을 찾을 수 없습니다.</Message>
   }
 
-  // 💡 DB에서 전달받은 값
-  const imageUrl = product.image_url
-  const sellerId = product.seller_id;
-  const sellerNickname = product.seller_nickname;
-  // 💡 로그인되어 있고, 로그인한 유저 ID와 작성자 ID가 일치하는지 확인
-  console.log(parseInt(currentUserId), sellerId)
-  const isSeller = Boolean(
-    isLoggedIn && 
-    currentUserId && 
-    sellerId && 
-    parseInt(currentUserId) === sellerId
-  );
-  
+  const isAuthor = isLoggedIn && Number(currentUserId) === Number(post.user_id)
+  const isSameSchool = currentUserSchool === post.school
+  const isSameGender = currentUserGender === post.gender
+  const canApply = isLoggedIn && !isAuthor && isSameSchool && isSameGender
+  console.log('로그인 사용자 성별:', currentUserGender)
+  console.log('게시글 작성자 성별:', post.gender)
+  console.log('작성자 여부:', isAuthor)
+  console.log('신청 가능 여부:', canApply)
+
+  const formatDate = (value) => {
+    if (!value) return '미정'
+    return new Date(value).toLocaleString('ko-KR')
+  }
+
   return (
     <Container>
-      {/* 상단 네비게이션/액션 헤더 */}
-      <HeaderBar>
+      <TopBar>
         <BackButton onClick={() => navigate(-1)}>← 목록으로</BackButton>
 
-        {/* 💡 isSeller가 true일 때만 수정/삭제 버튼 노출 */}
-        {isSeller && (
-          <SellerActions>
+        {isAuthor && (
+          <Actions>
             <EditButton onClick={() => navigate(`/product/edit/${id}`)}>수정</EditButton>
             <DeleteButton onClick={handleDelete}>삭제</DeleteButton>
-          </SellerActions>
+          </Actions>
         )}
-      </HeaderBar>
+      </TopBar>
 
-      <ContentWrapper>
-        {/* 상품 이미지 영역 */}
-        <ImageSection>
-          {imageUrl ? (
-            <ProductImage src={imageUrl? imageUrl : 'https://via.placeholder.com/150'} alt={product.title} />
-          ) : (
-            <NoImage>등록된 이미지가 없습니다.</NoImage>
-          )}
-        </ImageSection>
+      <Content>
+        <Title>{post.title}</Title>
 
-        {/* 상품 상세 정보 영역 */}
-        <InfoSection>
-          <BadgeGroup>
-            <TypeBadge $isFree={product.type === 'FREE'}>
-              {product.type === 'FREE' ? '🎁 무료나눔' : '💵 판매하기'}
-            </TypeBadge>
-            <CategoryBadge>{product.category}</CategoryBadge>
-          </BadgeGroup>
+        <AuthorInfo>
+          작성자: {post.real_name} ({post.gender === 'MALE' ? '남성' : '여성'} / {post.school})
+        </AuthorInfo>
 
-          <Title>{product.title}</Title>
+        <RouteBox>
+          <RouteLabel>출발지</RouteLabel>
+          <RouteValue>{post.departure}</RouteValue>
+          <Arrow>↓</Arrow>
+          <RouteLabel>도착지</RouteLabel>
+          <RouteValue>{post.destination}</RouteValue>
+        </RouteBox>
 
-          <PriceContainer>
-            {product.type === 'FREE' || Number(product.price) === 0 ? (
-              <PriceText $isFree>무료나눔 🎁</PriceText>
-            ) : (
-              <PriceText>{Number(product.price)?.toLocaleString()}원</PriceText>
-            )}
-          </PriceContainer>
+        <InfoList>
+          <InfoRow>
+            <InfoLabel>출발 예정 시간</InfoLabel>
+            <InfoValue>{formatDate(post.departure_time)}</InfoValue>
+          </InfoRow>
+          <InfoRow>
+            <InfoLabel>예상 택시 요금</InfoLabel>
+            <InfoValue>
+              {post.estimated_fare == null
+                ? '미정'
+                : `${Number(post.estimated_fare).toLocaleString()}원`}
+            </InfoValue>
+          </InfoRow>
+          <InfoRow>
+            <InfoLabel>탑승 인원</InfoLabel>
+            <InfoValue>{post.current_people} / {post.max_people}명</InfoValue>
+          </InfoRow>
+          <InfoRow>
+            <InfoLabel>작성 시기</InfoLabel>
+            <InfoValue>{formatDate(post.created_at)}</InfoValue>
+          </InfoRow>
+          <InfoRow>
+            <InfoLabel>최종 수정 시기</InfoLabel>
+            <InfoValue>{formatDate(post.updated_at)}</InfoValue>
+          </InfoRow>
+        </InfoList>
 
-          <MetaInfoList>
-            <MetaItem>
-              <MetaLabel>📍 희망 거래 장소</MetaLabel>
-              <MetaValue>{product.location}</MetaValue>
-            </MetaItem>
-            <MetaItem>
-              <MetaLabel>👤 판매자</MetaLabel>
-              <MetaValue>{sellerNickname || '익명'}</MetaValue>
-            </MetaItem>
-          </MetaInfoList>
+        <DescriptionSection>
+          <DescriptionTitle>상세 설명</DescriptionTitle>
+          <DescriptionText>{post.description || '등록된 상세 설명이 없습니다.'}</DescriptionText>
+        </DescriptionSection>
 
-          <DescriptionContainer>
-            <DescriptionTitle>상품 상세 설명</DescriptionTitle>
-            <DescriptionText>{product.description}</DescriptionText>
-          </DescriptionContainer>
-
-          {/* 액션 버튼 */}
-          {!isSeller ? (
-            <ContactButton>
-              💬 판매자와 채팅하기
-            </ContactButton>
-          ) : (
-            <DisabledButton disabled>
-              내가 등록한 상품입니다
-            </DisabledButton>
-          )}
-        </InfoSection>
-      </ContentWrapper>
+        {isAuthor ? (
+          <DisabledButton disabled>
+            내가 작성한 게시글입니다.
+          </DisabledButton>
+        ) : !isLoggedIn ? (
+          <ApplyButton onClick={() => navigate('/login')}>
+            로그인 후 신청 가능
+          </ApplyButton>
+        ) : !isSameSchool ? (
+          <DisabledButton disabled>
+            같은 학교 학생만 신청할 수 있습니다.
+          </DisabledButton>
+        ) : !isSameGender ? (
+          <DisabledButton disabled>
+            작성자와 성별이 같은 사용자만 신청할 수 있습니다.
+          </DisabledButton>
+        ) : (
+          <ApplyButton onClick={() => alert('신청 기능은 현재 화면만 구현되어 있습니다.')}>
+            합승 신청
+          </ApplyButton>
+        )}
+      </Content>
     </Container>
-  );
+  )
 }
 
-export default ProductDetailPage;
-
-/* ==========================================
-   Styled Components
-   ========================================== */
+export default ProductDetailPage
 
 const Container = styled.div`
-  max-width: 800px;
+  width: 100%;
+  max-width: 700px;
   margin: 0 auto;
-  padding: 40px 20px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-`;
+  padding: 30px 20px 50px;
+`
 
-const StatusMessage = styled.div`
-  text-align: center;
-  padding: 60px 0;
-  font-size: 16px;
-  color: #666;
-`;
-
-const HeaderBar = styled.div`
+const TopBar = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
-`;
+  margin-bottom: 22px;
+`
 
 const BackButton = styled.button`
-  background: none;
   border: none;
-  color: #666;
-  font-size: 14px;
+  background: none;
+  color: #495057;
   cursor: pointer;
-  padding: 0;
-  &:hover {
-    color: #333;
-    text-decoration: underline;
-  }
-`;
+`
 
-const SellerActions = styled.div`
+const Actions = styled.div`
   display: flex;
   gap: 8px;
-`;
+`
 
 const EditButton = styled.button`
-  padding: 6px 14px;
-  background-color: #ffffff;
+  padding: 7px 13px;
   border: 1px solid #ced4da;
   border-radius: 6px;
-  color: #495057;
-  font-size: 13px;
+  background: white;
   cursor: pointer;
-  &:hover {
-    background-color: #f8f9fa;
-  }
-`;
+`
 
 const DeleteButton = styled.button`
-  padding: 6px 14px;
-  background-color: #ffffff;
+  padding: 7px 13px;
   border: 1px solid #ffa8a8;
   border-radius: 6px;
+  background: white;
   color: #e03131;
-  font-size: 13px;
   cursor: pointer;
-  &:hover {
-    background-color: #fff5f5;
-  }
-`;
+`
 
-const ContentWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 30px;
-
-  @media (min-width: 640px) {
-    flex-direction: row;
-    align-items: flex-start;
-  }
-`;
-
-const ImageSection = styled.div`
-  flex: 1;
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  background-color: #f1f3f5;
+const Content = styled.div`
+  padding: 25px;
+  border: 1px solid #e9ecef;
   border-radius: 12px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
+`
 
-const ProductImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-`;
-
-const NoImage = styled.div`
-  color: #868e96;
-  font-size: 14px;
-`;
-
-const InfoSection = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-`;
-
-const BadgeGroup = styled.div`
-  display: flex;
-  gap: 8px;
-`;
-
-const TypeBadge = styled.span`
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 4px;
-  background-color: ${(props) => (props.$isFree ? '#e7f5ff' : '#f1f3f5')};
-  color: ${(props) => (props.$isFree ? '#1c7ed6' : '#495057')};
-`;
-
-const CategoryBadge = styled.span`
-  font-size: 12px;
-  font-weight: 500;
-  padding: 4px 8px;
-  border-radius: 4px;
-  background-color: #f8f9fa;
-  color: #868e96;
-`;
-
-const Title = styled.h1`
-  font-size: 22px;
-  font-weight: 700;
+const Title = styled.h2`
+  margin: 0 0 10px;
+  font-size: 23px;
   color: #212529;
-  margin: 0;
-`;
+`
 
-const PriceContainer = styled.div`
-  margin-bottom: 8px;
-`;
+const AuthorInfo = styled.p`
+  margin: 0 0 25px;
+  font-size: 13px;
+  color: #868e96;
+`
 
-const PriceText = styled.div`
-  font-size: 24px;
-  font-weight: 800;
-  color: ${(props) => (props.$isFree ? '#1c7ed6' : '#212529')};
-`;
+const RouteBox = styled.div`
+  padding: 22px;
+  background: #edf5ff;
+  border-radius: 10px;
+`
 
-const MetaInfoList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px 0;
-  border-top: 1px solid #f1f3f5;
-  border-bottom: 1px solid #f1f3f5;
-`;
+const RouteLabel = styled.div`
+  font-size: 12px;
+  color: #6c829d;
+`
 
-const MetaItem = styled.div`
+const RouteValue = styled.div`
+  margin-top: 5px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #174d91;
+`
+
+const Arrow = styled.div`
+  margin: 10px 0;
+  color: #2675d8;
+`
+
+const InfoList = styled.div`
+  margin: 25px 0;
+  border-top: 1px solid #e9ecef;
+`
+
+const InfoRow = styled.div`
   display: flex;
   justify-content: space-between;
-  font-size: 14px;
-`;
+  gap: 15px;
+  padding: 13px 0;
+  border-bottom: 1px solid #f1f3f5;
+`
 
-const MetaLabel = styled.span`
+const InfoLabel = styled.span`
   color: #868e96;
-`;
+  font-size: 13px;
+`
 
-const MetaValue = styled.span`
-  color: #212529;
-  font-weight: 500;
-`;
+const InfoValue = styled.span`
+  color: #343a40;
+  font-size: 13px;
+  text-align: right;
+`
 
-const DescriptionContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`;
+const DescriptionSection = styled.div`
+  margin: 25px 0;
+`
 
 const DescriptionTitle = styled.h3`
-  font-size: 14px;
-  font-weight: 600;
-  color: #495057;
-  margin: 0;
-`;
+  font-size: 15px;
+  color: #343a40;
+`
 
 const DescriptionText = styled.p`
+  white-space: pre-wrap;
+  line-height: 1.7;
+  color: #495057;
   font-size: 14px;
-  color: #343a40;
-  line-height: 1.6;
-  white-space: pre-wrap; /* 줄바꿈 유지 */
-  margin: 0;
-`;
+`
 
-const ContactButton = styled.button`
+const ApplyButton = styled.button`
   width: 100%;
   padding: 14px;
-  background-color: #228be6;
-  color: #ffffff;
   border: none;
   border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
+  background: #2675d8;
+  color: white;
+  font-size: 15px;
+  font-weight: 700;
   cursor: pointer;
-  transition: background-color 0.2s ease;
-  margin-top: 8px;
-
-  &:hover {
-    background-color: #1c7ed6;
-  }
-`;
+`
 
 const DisabledButton = styled.button`
   width: 100%;
   padding: 14px;
-  background-color: #e9ecef;
-  color: #adb5bd;
   border: none;
   border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: not-allowed;
-  margin-top: 8px;
-`;
+  background: #e9ecef;
+  color: #868e96;
+  font-size: 13px;
+`
+
+const Message = styled.div`
+  padding: 70px 20px;
+  text-align: center;
+  color: #868e96;
+`

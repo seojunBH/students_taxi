@@ -1,24 +1,49 @@
-import { Outlet } from 'react-router-dom';
-import styled from 'styled-components';
-import Header from './components/Header';
-import Footer from './components/Footer';
 
-const Layout = ({ isLoggedIn, setIsLoggedIn, currentUserId, setCurrentUserId }) => {
+import { Outlet } from 'react-router-dom'
+import styled from 'styled-components'
+import Header from './components/Header'
+import Footer from './components/Footer'
+
+const Layout = ({
+  isLoggedIn,
+  setIsLoggedIn,
+  currentUserId,
+  setCurrentUserId,
+  currentUserGender,
+  setCurrentUserGender,
+  currentUserSchool,
+  setCurrentUserSchool
+}) => {
   return (
     <PageWrapper>
-      <Header isLoggedIn={ isLoggedIn} setIsLoggedIn={setIsLoggedIn} setCurrentUserId={setCurrentUserId } />
+      <Header
+        isLoggedIn={isLoggedIn}
+        setIsLoggedIn={setIsLoggedIn}
+        setCurrentUserId={setCurrentUserId}
+        setCurrentUserGender={setCurrentUserGender}
+        setCurrentUserSchool={setCurrentUserSchool}
+      />
       <MainContent>
-        {/* 💡 context를 통해 하위 컴포넌트로 setIsLoggedIn 전달 */}
-        <Outlet context={{ isLoggedIn, setIsLoggedIn, currentUserId, setCurrentUserId }} />
+        <Outlet
+          context={{
+            isLoggedIn,
+            setIsLoggedIn,
+            currentUserId,
+            setCurrentUserId,
+            currentUserGender,
+            setCurrentUserGender,
+            currentUserSchool,
+            setCurrentUserSchool
+          }}
+        />
       </MainContent>
       <Footer />
     </PageWrapper>
-  );
-};
+  )
+}
 
-export default Layout;
+export default Layout
 
-// 🎨 styled-components 스타일 정의
 const PageWrapper = styled.div`
   max-width: 600px;
   margin: 0 auto;
@@ -26,11 +51,11 @@ const PageWrapper = styled.div`
   display: flex;
   flex-direction: column;
   background-color: #fff;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.05); /* 모바일 뷰 구분용 연한 그림자 */
-`;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+`
 
 const MainContent = styled.main`
-  flex: 1; /* 콘텐츠 영역이 남은 높이를 채워 푸터가 하단에 붙도록 함 */
+  flex: 1;
   display: flex;
   flex-direction: column;
-`;
+`

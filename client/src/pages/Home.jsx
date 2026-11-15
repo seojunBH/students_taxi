@@ -1,236 +1,326 @@
-import { useState, useEffect } from 'react';
-import styled from 'styled-components';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 
-const CATEGORIES = ['전체', '서적', '교복', '학용품', '기타'];
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import styled from 'styled-components'
+import axios from 'axios'
 
-const Home = () => {
-  const navigate = useNavigate();
-  // 1. 초기 상태를 빈 배열([])로 설정
-  const [products, setProducts] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState('전체');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  // 2. 컴포넌트 마운트 시 백엔드 API(DB) 데이터 불러오기
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        // GET /api/products 연동
-        const response = await axios.get('/api/products');
-        setProducts(response.data);
-      } catch (err) {
-        console.error('상품 목록 불러오기 실패:', err);
-        setError('상품 목록을 불러오는 중 오류가 발생했습니다.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
-  }, []);
-
-  // 3. 카테고리 필터링
-  const filteredProducts = selectedCategory === '전체'
-    ? products
-    : products.filter(item => item.category === selectedCategory);
-
-  // 로딩 및 에러 예외 처리
-  if (loading) return <StateMessage>상품 목록을 불러오는 중...</StateMessage>;
-  if (error) return <StateMessage style={{ color: '#e74c3c' }}>{error}</StateMessage>;
-
-  return (
-    <HomeContainer>
-      {/* 1. 카테고리 태그 바 */}
-      <CategoryNav>
-        {CATEGORIES.map((cat) => (
-          <CategoryChip
-            key={cat}
-            $active={selectedCategory === cat}
-            onClick={() => setSelectedCategory(cat)}
-          >
-            {cat}
-          </CategoryChip>
-        ))}
-      </CategoryNav>
-
-      {/* 2. 게시글 목록 영역 */}
-      <ProductList>
-        {filteredProducts.length === 0 ? (
-          <StateMessage>등록된 상품이 없습니다.</StateMessage>
-        ) : (
-          filteredProducts.map((product) => (
-            <ProductCard 
-              key={product.id} 
-              onClick={() => navigate(`/product/${product.id}`)}
-            >
-              <Thumbnail 
-                src={ product.image_url? product.image_url : 'https://via.placeholder.com/150'}
-                alt={product.title} 
-              />
-
-              <InfoArea>
-                <Title>{product.title}</Title>
-                
-                <Meta>
-                  <LocationTag>📍 {product.location}</LocationTag>
-                  <Dot>•</Dot>
-                  {/* DB TIMESTAMP를 날짜 문자열로 변환 */}
-                  <span>{new Date(product.created_at).toLocaleDateString()}</span>
-                </Meta>
-
-                <PriceRow>
-                  {product.status === 'RESERVED' && <Badge $type="reserved">예약중</Badge>}
-                  {product.status === 'COMPLETED' && <Badge $type="completed">거래완료</Badge>}
-                  
-                  <Price>
-                    {product.type === 'FREE' || Number(product.price) === 0 ? (
-                      <FreeText>무료나눔 🎁</FreeText>
-                    ) : (
-                      `${Number(product.price).toLocaleString()}원`
-                    )}
-                  </Price>
-                </PriceRow>
-              </InfoArea>
-            </ProductCard>
-          ))
-        )}
-      </ProductList>
-    </HomeContainer>
-  );
-};
-
-export default Home;
-
-/* ==========================================================================
-   🎨 기존 styled-components 스타일 유지
-   ========================================================================== */
-
-const HomeContainer = styled.div`
+const Container = styled.main`
   width: 100%;
-  display: flex;
-  flex-direction: column;
-`;
+  max-width: 1200px;
+  min-height: 800px;
+  margin: 0 auto;
+  padding: 48px 40px 80px;
 
-const CategoryNav = styled.nav`
-  display: flex;
-  gap: 8px;
-  padding: 12px 16px;
-  border-bottom: 1px solid #f1f3f5;
-  overflow-x: auto;
-  white-space: nowrap;
-  
-  &::-webkit-scrollbar {
-    display: none;
+  @media (max-width: 768px) {
+    padding: 32px 20px 60px;
   }
-`;
+`
 
-const CategoryChip = styled.button`
-  padding: 6px 14px;
-  border-radius: 20px;
-  border: 1px solid ${props => (props.$active ? '#FF6F0F' : '#e9ecef')};
-  background-color: ${props => (props.$active ? '#FF6F0F' : '#fff')};
-  color: ${props => (props.$active ? '#fff' : '#495057')};
-  font-size: 13px;
-  font-weight: ${props => (props.$active ? '600' : '400')};
-  cursor: pointer;
-  transition: all 0.15s ease-in-out;
-`;
+const Intro = styled.section`
+  margin-bottom: 36px;
 
-const ProductList = styled.div`
-  padding: 0 16px;
-`;
-
-const ProductCard = styled.article`
-  display: flex;
-  padding: 16px 0;
-  border-bottom: 1px solid #f1f3f5;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-
-  &:active {
-    background-color: #f8f9fa;
+  h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: #222;
+    margin-bottom: 12px;
   }
-`;
 
-const Thumbnail = styled.img`
-  width: 100px;
-  height: 100px;
-  border-radius: 8px;
-  object-fit: cover;
-  margin-right: 16px;
-  background-color: #f1f3f5;
-  flex-shrink: 0;
-`;
+  p {
+    font-size: 16px;
+    color: #777;
+  }
+`
 
-const InfoArea = styled.div`
+const SearchForm = styled.form`
   display: flex;
-  flex-direction: column;
-  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+  margin-bottom: 36px;
+  background: #f7f8fa;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+  }
+`
+
+const SearchInput = styled.input`
   flex: 1;
   min-width: 0;
-`;
-
-const Title = styled.h2`
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: white;
   font-size: 15px;
-  font-weight: 500;
-  margin: 0 0 4px 0;
-  color: #212529;
-  line-height: 1.3;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
 
-const Meta = styled.div`
-  font-size: 12px;
-  color: #868e96;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-`;
+  &:focus {
+    outline: 2px solid #2878e5;
+    border-color: transparent;
+  }
+`
 
-const LocationTag = styled.span`
-  font-weight: 500;
-  color: #495057;
-`;
-
-const Dot = styled.span`
-  margin: 0 4px;
-`;
-
-const PriceRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-`;
-
-const Price = styled.span`
-  font-size: 16px;
-  font-weight: 700;
-  color: #212529;
-`;
-
-const FreeText = styled.span`
-  color: #FF6F0F;
-  font-weight: 700;
-`;
-
-const Badge = styled.span`
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 4px;
+const SearchButton = styled.button`
+  height: 46px;
+  padding: 0 24px;
+  border: none;
+  border-radius: 8px;
+  background: #2878e5;
+  color: white;
+  font-size: 15px;
   font-weight: 600;
-  color: #fff;
-  background-color: ${props => (props.$type === 'reserved' ? '#2b8a3e' : '#868e96')};
-`;
+  cursor: pointer;
 
-/* 추가된 메시지 UI 스타일 */
-const StateMessage = styled.div`
+  &:hover {
+    background: #1766d0;
+  }
+`
+
+const ResetButton = styled.button`
+  height: 46px;
+  padding: 0 18px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: white;
+  color: #555;
+  font-size: 15px;
+  cursor: pointer;
+
+  &:hover {
+    background: #f0f0f0;
+  }
+`
+
+const SectionHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+
+  h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #222;
+  }
+`
+
+const PostList = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+
+  @media (max-width: 700px) {
+    grid-template-columns: 1fr;
+  }
+`
+
+const PostCard = styled(Link)`
+  display: block;
+  padding: 24px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: white;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    border-color: #2878e5;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  }
+`
+
+const PostTitle = styled.h3`
+  margin-bottom: 18px;
+  font-size: 19px;
+  font-weight: 700;
+  color: #222;
+`
+
+const RouteInfo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  font-size: 15px;
+  color: #444;
+`
+
+const RoutePoint = styled.span`
+  padding: 7px 12px;
+  background: #f2f6fc;
+  border-radius: 6px;
+`
+
+const PostMeta = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+  font-size: 13px;
+  color: #888;
+`
+
+const StatusMessage = styled.p`
+  padding: 50px 20px;
   text-align: center;
-  padding: 40px 16px;
-  color: #868e96;
-  font-size: 14px;
-`;
+  color: #888;
+  background: #f8f9fb;
+  border-radius: 12px;
+`
+
+const ErrorMessage = styled(StatusMessage)`
+  color: #d9534f;
+`
+
+function Home() {
+  const [posts, setPosts] = useState([])
+  const [departure, setDeparture] = useState('')
+  const [destination, setDestination] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const fetchPosts = async (searchDeparture = '', searchDestination = '') => {
+    try {
+      setLoading(true)
+      setError('')
+
+      const response = await axios.get('/api/ride-posts', {
+        params: {
+          departure: searchDeparture,
+          destination: searchDestination
+        }
+      })
+
+      setPosts(response.data)
+    } catch (err) {
+      setError('게시물을 불러오지 못했습니다. 서버 연결을 확인해 주세요.')
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadPosts = async () => {
+      try {
+        const response = await axios.get('/api/ride-posts')
+
+        if (!cancelled) {
+          setPosts(response.data)
+          setError('')
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError('게시물을 불러오지 못했습니다. 서버 연결을 확인해 주세요.')
+          console.error(err)
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadPosts()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const handleSearch = (e) => {
+    e.preventDefault()
+    fetchPosts(departure, destination)
+  }
+
+  const handleReset = () => {
+    setDeparture('')
+    setDestination('')
+    fetchPosts('', '')
+  }
+
+  return (
+    <Container>
+      <Intro>
+        <h1>함께 이동할 학생을 찾아보세요.</h1>
+        <p>같은 방향으로 이동하는 학생들과 택시를 함께 이용해 보세요.</p>
+      </Intro>
+
+      <SearchForm onSubmit={handleSearch}>
+        <SearchInput
+          placeholder="출발지를 입력하세요"
+          value={departure}
+          onChange={(e) => setDeparture(e.target.value)}
+        />
+
+        <SearchInput
+          placeholder="도착지를 입력하세요"
+          value={destination}
+          onChange={(e) => setDestination(e.target.value)}
+        />
+
+        <SearchButton type="submit">검색</SearchButton>
+        <ResetButton type="button" onClick={handleReset}>
+          초기화
+        </ResetButton>
+      </SearchForm>
+
+      <SectionHeader>
+        <h2>합승 모집</h2>
+      </SectionHeader>
+
+      {loading ? (
+        <StatusMessage>게시물을 불러오는 중입니다.</StatusMessage>
+      ) : error ? (
+        <ErrorMessage>{error}</ErrorMessage>
+      ) : posts.length === 0 ? (
+        <StatusMessage>아직 등록된 게시물이 없습니다.</StatusMessage>
+      ) : (
+        <PostList>
+          {posts.map((post) => (
+            <PostCard
+              key={post.post_id}
+              to={`/product/${post.post_id}`}
+            >
+              <PostTitle>{post.title}</PostTitle>
+
+              <RouteInfo>
+                <RoutePoint>{post.departure}</RoutePoint>
+                <span>→</span>
+                <RoutePoint>{post.destination}</RoutePoint>
+              </RouteInfo>
+
+              <PostMeta>
+                <span>
+                  작성자 {post.real_name} (
+                  {post.gender === 'MALE' ? '남성' : '여성'})
+                </span>
+                <span>
+                  {post.departure_time
+                    ? new Date(post.departure_time).toLocaleString('ko-KR')
+                    : '시간 미정'}
+                </span>
+                <span>
+                  {post.estimated_fare != null
+                    ? `${Number(post.estimated_fare).toLocaleString()}원`
+                    : '요금 미정'}
+                </span>
+                <span>
+                  {post.current_people}/{post.max_people}명
+                </span>
+              </PostMeta>
+            </PostCard>
+          ))}
+        </PostList>
+      )}
+    </Container>
+  )
+}
+
+export default Home

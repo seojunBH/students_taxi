@@ -1,54 +1,63 @@
+
 import express from 'express';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import db from '../db.js';
-import { authenticateToken } from '../middlewares/auth.js';
 
 const router = express.Router();
 
-// 1. 회원가입 API (가입 성공 시 자동 로그인을 위한 토큰 즉시 반환)
-// POST /api/users/signup
 router.post('/signup', async (req, res) => {
-  const { email, password, nickname, phone_number, entry_year, student_id } = req.body;
+  const {
+    email,
+    password,
+    real_name,
+    gender,
+    phone_number,
+    school,
+    entry_year,
+    student_id
+  } = req.body;
 
-  if (!email || !password || !nickname || !phone_number || !entry_year || !student_id) {
-    return res.status(400).json({ message: ' 모든 필수 정보를 입력해 주세요.' });
+  if (
+    !email || !password || !real_name || !gender ||
+    !phone_number || !school || !entry_year || !student_id
+  ) {
+    return res.status(400).json({ message: '모든 필수 정보를 입력해 주세요.' });
+  }
+
+  if (!['MALE', 'FEMALE'].includes(gender)) {
+    return res.status(400).json({ message: '올바른 성별을 선택해 주세요.' });
   }
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const [result] = await db.query(
-      `INSERT INTO users (email, password, nickname, phone_number, entry_year, student_id) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [email, hashedPassword, nickname, phone_number, entry_year, student_id]
+      `INSERT INTO users
+      (email, password, real_name, gender, phone_number, school, entry_year, student_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [email, hashedPassword, real_name, gender, phone_number, school, entry_year, student_id]
     );
 
-    const userId = result.insertId;
-    const token = jwt.sign(
-      { userId, email, nickname },
-      process.env.JWT_SECRET ?? 'fallback_secret_key',
-      { expiresIn: '7d' }
-    );
-
-    return res.status(201).json({
+    res.status(201).json({
       message: '회원가입이 완료되었습니다.',
-      token,
-      user: { id: userId, email, nickname }
+      user: {
+        user_id: result.insertId,
+        email,
+        real_name
+      }
     });
-
   } catch (error) {
-    // 💡 복합 유니크(uk_entry_student) 또는 이메일/전화번호 중복 시 예외 처리
     if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ message: '이미 등록된 회원 정보(이메일/전화번호/학번)입니다.' });
+      return res.status(409).json({
+        message: '이미 등록된 이메일, 전화번호 또는 학번입니다.'
+      });
     }
-    console.error('회원가입 에러:', error);
-    return res.status(500).json({ message: '서버 에러가 발생했습니다.' });
+
+    console.error('회원가입 오류:', error);
+    res.status(500).json({ message: '회원가입 중 서버 오류가 발생했습니다.' });
   }
 });
 
-// 2. 로그인 API
-// POST /api/users/login
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -58,139 +67,153 @@ router.post('/login', async (req, res) => {
 
   try {
     const [rows] = await db.query(
-      'SELECT id, email, password, nickname FROM users WHERE email = ?',
+      'SELECT user_id, email, password, real_name, gender,school FROM users WHERE email = ?',
       [email]
     );
 
-    // 회원이 아닌 경우 (404 상태코드 -> 프론트에서 회원가입 이동 유도)
     if (rows.length === 0) {
       return res.status(404).json({ message: '등록된 회원 정보가 없습니다.' });
     }
 
-    const [user] = rows;
-    const isPasswordMatch = await bcrypt.compare(password, user.password);
+    const user = rows[0];
+    const isMatch = await bcrypt.compare(password, user.password);
 
-    if (!isPasswordMatch) {
+    if (!isMatch) {
       return res.status(401).json({ message: '비밀번호가 일치하지 않습니다.' });
     }
 
-    const token = jwt.sign(
-      { id: user.id, email: user.email, nickname: user.nickname },
-      process.env.JWT_SECRET ?? 'fallback_secret_key',
-      { expiresIn: '7d' }
-    );
-
-    return res.status(200).json({
+    res.status(200).json({
       message: '로그인 성공',
-      token,
-      user: { id: user.id, email: user.email, nickname: user.nickname }
+      user: {
+        user_id: user.user_id,
+        email: user.email,
+        real_name: user.real_name,
+        gender: user.gender,
+        school : user.school
+      }
     });
   } catch (error) {
-    console.error('로그인 에러:', error);
-    return res.status(500).json({ message: '서버 에러가 발생했습니다.' });
+    console.error('로그인 오류:', error);
+    res.status(500).json({ message: '로그인 중 서버 오류가 발생했습니다.' });
   }
 });
 
+router.get('/:userId', async (req, res) => {
+  const { userId } = req.params;
 
-// 1. 프로필 정보 조회 (GET /api/users/me)
-router.get('/me', authenticateToken, async (req, res) => {
   try {
-    // 💡 req.user 속성명이 id, userId, user_id 중 무엇으로 들어오든 대응
-    const userId = req.user?.id || req.user?.userId || req.user?.user_id;
-
-    if (!userId) {
-      console.error('❌ 토큰 유저 정보에 ID가 없습니다:', req.user);
-      return res.status(400).json({ message: '유효하지 않은 토큰 정보입니다.' });
-    }
-
-    const [users] = await db.query(
-      'SELECT id, email, nickname, phone_number, entry_year, student_id FROM users WHERE id = ?',
+    const [rows] = await db.query(
+      `SELECT user_id, email, real_name, gender, phone_number,
+      school, entry_year, student_id, created_at, updated_at
+      FROM users WHERE user_id = ?`,
       [userId]
     );
 
-    if (!users || users.length === 0) {
-      return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+    if (rows.length === 0) {
+      return res.status(404).json({ message: '회원을 찾을 수 없습니다.' });
     }
 
-    res.json(users[0]);
+    res.json(rows[0]);
   } catch (error) {
-    console.error('❌ GET /api/users/me 500 에러 발생:', error); // 터미널에 상세 에러 출력
-    res.status(500).json({ message: '서버 내부 오류가 발생했습니다.' });
+    console.error('회원 조회 오류:', error);
+    res.status(500).json({ message: '회원 조회 중 서버 오류가 발생했습니다.' });
   }
 });
 
-// 2. 프로필 정보 수정 (PUT /api/users/me)
-router.put('/me', authenticateToken, async (req, res) => {
+router.put('/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const {
+    currentPassword,
+    email,
+    real_name,
+    gender,
+    phone_number,
+    school,
+    entry_year,
+    student_id
+  } = req.body;
+
   try {
-    const userId = req.user?.id || req.user?.userId || req.user?.user_id;
-    const { currentPassword, nickname, phone_number, student_id } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({ message: '유효하지 않은 토큰 정보입니다.' });
-    }
-
-    // 💡 DB에서 현재 비밀번호 조회
-    const [users] = await db.query('SELECT password FROM users WHERE id = ?', [userId]);
-
-    if (!users || users.length === 0) {
-      return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
-    }
-
-    const user = users[0];
-
-    // 비밀번호 검증 (평문 DB인 경우)
-    // 백엔드 PUT /me 내부
-    const isPasswordCorrect = await bcrypt.compare(currentPassword, user.password);
-    if (!isPasswordCorrect) {
-      return res.status(400).json({ message: '현재 비밀번호가 일치하지 않습니다.' });
-    }
-
-    // 프로필 정보 업데이트
-    await db.query(
-      'UPDATE users SET nickname = ?, phone_number = ?, student_id = ? WHERE id = ?',
-      [nickname, phone_number, student_id, userId]
+    const [rows] = await db.query(
+      'SELECT password FROM users WHERE user_id = ?',
+      [userId]
     );
 
-    res.json({ message: '프로필 정보가 성공적으로 수정되었습니다.' });
+    if (rows.length === 0) {
+      return res.status(404).json({ message: '회원을 찾을 수 없습니다.' });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword || '', rows[0].password);
+
+    if (!isMatch) {
+      return res.status(401).json({ message: '비밀번호가 일치하지 않습니다.' });
+    }
+    console.log({
+      email,
+      real_name,
+      gender,
+      phone_number,
+      school,
+      entry_year,
+      student_id
+    });
+    if (!email || !real_name || !gender || !phone_number || !school || !entry_year || !student_id) {
+      return res.status(400).json({ message: '모든 회원 정보를 입력해 주세요.' });
+    }
+
+    if (!['MALE', 'FEMALE'].includes(gender)) {
+      return res.status(400).json({ message: '올바른 성별을 선택해 주세요.' });
+    }
+
+    await db.query(
+      `UPDATE users
+      SET email = ?, real_name = ?, gender = ?, phone_number = ?,
+      school = ?, entry_year = ?, student_id = ?
+      WHERE user_id = ?`,
+      [email, real_name, gender, phone_number, school, entry_year, student_id, userId]
+    );
+
+    res.json({ message: '회원 정보가 수정되었습니다.' });
   } catch (error) {
-    console.error('❌ PUT /api/users/me 500 에러 발생:', error);
-    res.status(500).json({ message: '프로필 수정 중 서버 오류가 발생했습니다.' });
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ message: '이미 사용 중인 이메일, 전화번호 또는 학번입니다.' });
+    }
+
+    console.error('회원 수정 오류:', error);
+    res.status(500).json({ message: '회원 정보 수정 중 서버 오류가 발생했습니다.' });
   }
 });
 
-// 회원탈퇴
-router.delete('/me', authenticateToken, async (req, res) => {
+router.delete('/:userId', async (req, res) => {
+  const { userId } = req.params;
   const { password } = req.body;
-  const userId = req.user?.id || req.user?.userId;
 
   try {
-    if (!password) {
-      return res.status(400).json({ message: '비밀번호를 입력해 주세요.' });
+    const [rows] = await db.query(
+      'SELECT password FROM users WHERE user_id = ?',
+      [userId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: '회원을 찾을 수 없습니다.' });
     }
 
-    // 1. 유저 정보 조회
-    const [users] = await db.query('SELECT password FROM users WHERE id = ?', [userId]);
-    if (!users || users.length === 0) {
-      return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
-    }
+    const isMatch = await bcrypt.compare(password || '', rows[0].password);
 
-    const user = users[0];
-
-    // 2. 비밀번호 검증 (bcrypt.compare)
-    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ message: '비밀번호가 일치하지 않습니다.' });
+      return res.status(401).json({ message: '비밀번호가 일치하지 않습니다.' });
     }
-    
-    // 3. 회원 탈퇴 (DB 삭제)
-    await db.query('DELETE FROM users WHERE id = ?', [userId]);
 
-    res.json({ message: '회원 탈퇴가 정상적으로 처리되었습니다.' });
+    await db.query(
+      'DELETE FROM users WHERE user_id = ?',
+      [userId]
+    );
+
+    res.json({ message: '회원 탈퇴가 완료되었습니다.' });
   } catch (error) {
-    console.error('DELETE /api/users/me 에러:', error);
-    res.status(500).json({ message: '회원 탈퇴 처리 중 오류가 발생했습니다.' });
+    console.error('회원 탈퇴 오류:', error);
+    res.status(500).json({ message: '회원 탈퇴 중 서버 오류가 발생했습니다.' });
   }
 });
-
 
 export default router;

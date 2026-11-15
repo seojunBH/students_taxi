@@ -1,5 +1,6 @@
-import {useState } from 'react'
-import {Route, Routes} from 'react-router-dom'
+
+import { useState } from 'react'
+import { Route, Routes } from 'react-router-dom'
 import Layout from './Layout'
 import Home from './pages/Home'
 import LoginPage from './pages/LoginPage'
@@ -11,18 +12,28 @@ import ProductEditPage from './pages/ProductEditPage'
 import MyProductPage from './pages/MyProductPage'
 
 const App = () => {
-  // 로컬 스토리지의 토큰 존재 여부로 초기 로그인 상태 설정
-  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
-  const [currentUserId, setCurrentUserId] = useState(localStorage.getItem('userId'));
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('userId'))
+  const [currentUserId, setCurrentUserId] = useState(localStorage.getItem('userId'))
+  const [currentUserGender, setCurrentUserGender] = useState(localStorage.getItem('userGender'))
+  const [currentUserSchool, setCurrentUserSchool] = useState(localStorage.getItem('userSchool'))
 
   return (
     <Routes>
-      <Route element={<Layout isLoggedIn={isLoggedIn} 
-        setIsLoggedIn={setIsLoggedIn} 
-        currentUserId={currentUserId}
-        setCurrentUserId={setCurrentUserId} />}>
+      <Route
+        element={
+          <Layout
+            isLoggedIn={isLoggedIn}
+            setIsLoggedIn={setIsLoggedIn}
+            currentUserId={currentUserId}
+            setCurrentUserId={setCurrentUserId}
+            currentUserGender={currentUserGender}
+            setCurrentUserGender={setCurrentUserGender}
+            currentUserSchool={currentUserSchool}
+            setCurrentUserSchool={setCurrentUserSchool}
+          />
+        }
+      >
         <Route path="/" element={<Home />} />
-        {/* 인증 관련 라우트 */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/mypage/edit" element={<ProfileEditPage />} />

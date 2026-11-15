@@ -1,222 +1,171 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import styled from 'styled-components';
 
-export default function MyProductsPage({ currentUserId }) {
-  const navigate = useNavigate();
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
+import styled from 'styled-components'
 
-  // 로그인 유저 ID 가져오기 (Prop 또는 localStorage)
-  const userId = currentUserId || localStorage.getItem('userId');
+const MyProductPage = () => {
+  const navigate = useNavigate()
+  const userId = localStorage.getItem('userId')
+
+  const [posts, setPosts] = useState([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!userId) {
-      alert('로그인이 필요한 서비스입니다.');
-      navigate('/login');
-      return;
+      alert('로그인이 필요한 서비스입니다.')
+      navigate('/login')
+      return
     }
 
-    const fetchMyProducts = async () => {
+    const fetchPosts = async () => {
       try {
-        setLoading(true);
-        const response = await axios.get(`/api/products/user/${userId}`);
-        setProducts(response.data);
-      } catch (err) {
-        console.error('내 판매 상품 로드 실패:', err);
-        setError('상품 목록을 불러오는 중 오류가 발생했습니다.');
+        const response = await axios.get(`/api/ride-posts/user/${userId}`)
+        setPosts(response.data)
+      } catch (error) {
+        alert(error.response?.data?.message || '내 게시글을 불러오지 못했습니다.')
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    fetchMyProducts();
-  }, [userId, navigate]);
+    fetchPosts()
+  }, [userId, navigate])
 
-  if (loading) return <Container><StatusMessage>내가 등록한 상품을 불러오는 중...</StatusMessage></Container>;
-  if (error) return <Container><StatusMessage>{error}</StatusMessage></Container>;
+  if (loading) {
+    return <Message>내 게시글을 불러오는 중...</Message>
+  }
 
   return (
     <Container>
-      <HeaderBar>
-        <Title>내가 판매 중인 상품 ({products.length})</Title>
-      </HeaderBar>
+      <Header>
+        <Title>내가 작성한 글</Title>
+        <Count>{posts.length}개</Count>
+      </Header>
 
-      {products.length === 0 ? (
+      {posts.length === 0 ? (
         <EmptyState>
-          <EmptyText>아직 등록한 판매/나눔 상품이 없습니다.</EmptyText>
-          <WriteButton onClick={() => navigate('/write')}>상품 등록하러 가기</WriteButton>
+          <EmptyText>아직 작성한 모집 글이 없습니다.</EmptyText>
+          <WriteButton onClick={() => navigate('/write')}>
+            합승 모집 글 작성하기
+          </WriteButton>
         </EmptyState>
       ) : (
-        <ProductGrid>
-          {products.map((item) => (
-            <Card key={item.id} onClick={() => navigate(`/product/${item.id}`)}>
-              <ImageWrapper>
-                {item.image_url ? (
-                  <ProductImage src={item.image_url} alt={item.title} />
-                ) : (
-                  <NoImage>이미지 없음</NoImage>
-                )}
-                <TypeBadge $isFree={item.type === 'FREE'}>
-                  {item.type === 'FREE' ? '🎁 나눔' : '💵 판매'}
-                </TypeBadge>
-              </ImageWrapper>
-
-              <CardContent>
-                <ProductTitle>{item.title}</ProductTitle>
-                <PriceText>
-                  {item.type === 'FREE' || Number(item.price) === 0
-                    ? '무료나눔'
-                    : `${Number(item.price)?.toLocaleString()}원`}
-                </PriceText>
-                <LocationText>📍 {item.location} (판매시기 학번 : {item.student_id})</LocationText>
-              </CardContent>
-            </Card>
+        <PostList>
+          {posts.map(post => (
+            <PostCard
+              key={post.post_id}
+              onClick={() => navigate(`/product/${post.post_id}`)}
+            >
+              <PostTitle>{post.title}</PostTitle>
+              <RouteText>{post.departure} → {post.destination}</RouteText>
+              <PostInfo>
+                <span>
+                  {post.current_people} / {post.max_people}명
+                </span>
+                <span>
+                  {post.estimated_fare == null
+                    ? '요금 미정'
+                    : `${Number(post.estimated_fare).toLocaleString()}원`}
+                </span>
+              </PostInfo>
+            </PostCard>
           ))}
-        </ProductGrid>
+        </PostList>
       )}
     </Container>
-  );
+  )
 }
 
-/* ==========================================
-   Styled Components
-   ========================================== */
+export default MyProductPage
 
 const Container = styled.div`
-  max-width: 900px;
+  width: 100%;
+  max-width: 700px;
   margin: 0 auto;
-  padding: 40px 20px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-`;
+  padding: 35px 20px 50px;
+`
 
-const StatusMessage = styled.div`
-  text-align: center;
-  padding: 60px 0;
-  color: #666;
-`;
-
-const HeaderBar = styled.div`
+const Header = styled.div`
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
-  border-bottom: 2px solid #f1f3f5;
-  padding-bottom: 16px;
-`;
+  gap: 10px;
+  margin-bottom: 22px;
+`
 
 const Title = styled.h2`
-  font-size: 22px;
-  font-weight: 700;
-  color: #212529;
   margin: 0;
-`;
+  font-size: 22px;
+  color: #212529;
+`
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 80px 0;
-  background-color: #f8f9fa;
-  border-radius: 12px;
-`;
-
-const EmptyText = styled.p`
-  font-size: 16px;
+const Count = styled.span`
   color: #868e96;
-  margin-bottom: 16px;
-`;
-
-const WriteButton = styled.button`
-  padding: 10px 20px;
-  background-color: #228be6;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  &:hover {
-    background-color: #1c7ed6;
-  }
-`;
-
-const ProductGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 20px;
-`;
-
-const Card = styled.div`
-  border: 1px solid #e9ecef;
-  border-radius: 12px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
-  }
-`;
-
-const ImageWrapper = styled.div`
-  position: relative;
-  width: 100%;
-  height: 180px;
-  background-color: #f8f9fa;
-`;
-
-const ProductImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-`;
-
-const NoImage = styled.div`
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #adb5bd;
   font-size: 13px;
-`;
+`
 
-const TypeBadge = styled.span`
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #ffffff;
-  background-color: ${(props) => (props.$isFree ? '#20c997' : '#4c6ef5')};
-`;
-
-const CardContent = styled.div`
-  padding: 14px;
+const PostList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 6px;
-`;
+  gap: 12px;
+`
 
-const ProductTitle = styled.h3`
-  font-size: 15px;
-  font-weight: 600;
-  color: #212529;
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-`;
+const PostCard = styled.div`
+  padding: 18px;
+  border: 1px solid #e9ecef;
+  border-radius: 9px;
+  cursor: pointer;
 
-const PriceText = styled.div`
+  &:hover {
+    background: #f8fbff;
+    border-color: #b6d4fe;
+  }
+`
+
+const PostTitle = styled.h3`
+  margin: 0 0 12px;
   font-size: 16px;
-  font-weight: 700;
   color: #212529;
-`;
+`
 
-const LocationText = styled.div`
-  font-size: 12px;
+const RouteText = styled.p`
+  margin: 0 0 12px;
+  color: #2675d8;
+  font-size: 14px;
+  font-weight: 600;
+`
+
+const PostInfo = styled.div`
+  display: flex;
+  justify-content: space-between;
   color: #868e96;
-`;
+  font-size: 12px;
+`
+
+const EmptyState = styled.div`
+  padding: 60px 20px;
+  text-align: center;
+  background: #f8f9fa;
+  border-radius: 10px;
+`
+
+const EmptyText = styled.p`
+  margin-bottom: 18px;
+  color: #868e96;
+`
+
+const WriteButton = styled.button`
+  padding: 11px 18px;
+  border: none;
+  border-radius: 7px;
+  background: #2675d8;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+`
+
+const Message = styled.div`
+  padding: 60px 20px;
+  text-align: center;
+  color: #868e96;
+`
