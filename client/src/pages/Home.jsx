@@ -36,7 +36,7 @@ const SearchForm = styled.form`
   display: flex;
   gap: 10px;
   padding: 20px;
-  margin-bottom: 36px;
+  margin-bottom: 12px;
   background: #f7f8fa;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
@@ -90,6 +90,83 @@ const ResetButton = styled.button`
 
   &:hover {
     background: #f0f0f0;
+  }
+`
+
+const AdvancedSearchContainer = styled.section`
+  margin-bottom: 36px;
+  padding: 18px 20px;
+  background: #f7f8fa;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+`
+
+const AdvancedToggle = styled.button`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 4px 0;
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+`
+
+const AdvancedContent = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+`
+
+const AdvancedField = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #555;
+  }
+`
+
+const SearchSelect = styled.select`
+  width: 100%;
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: white;
+  font-size: 15px;
+`
+
+const AdvancedActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+`
+
+const AdvancedSearchButton = styled.button`
+  height: 42px;
+  padding: 0 22px;
+  border: none;
+  border-radius: 8px;
+  background: #2878e5;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    background: #1766d0;
   }
 `
 
@@ -180,10 +257,18 @@ function Home() {
   const [posts, setPosts] = useState([])
   const [departure, setDeparture] = useState('')
   const [destination, setDestination] = useState('')
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [advancedSchool, setAdvancedSchool] = useState('')
+  const [advancedGender, setAdvancedGender] = useState('')
+  const [advancedName, setAdvancedName] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const fetchPosts = async (searchDeparture = '', searchDestination = '') => {
+  const fetchPosts = async (
+    searchDeparture = '',
+    searchDestination = '',
+    advancedFilters = {}
+  ) => {
     try {
       setLoading(true)
       setError('')
@@ -191,7 +276,8 @@ function Home() {
       const response = await axios.get('/api/ride-posts', {
         params: {
           departure: searchDeparture,
-          destination: searchDestination
+          destination: searchDestination,
+          ...advancedFilters
         }
       })
 
@@ -239,9 +325,20 @@ function Home() {
     fetchPosts(departure, destination)
   }
 
+  const handleAdvancedSearch = () => {
+    fetchPosts(departure, destination, {
+      school: advancedSchool,
+      gender: advancedGender,
+      real_name: advancedName
+    })
+  }
+
   const handleReset = () => {
     setDeparture('')
     setDestination('')
+    setAdvancedSchool('')
+    setAdvancedGender('')
+    setAdvancedName('')
     fetchPosts('', '')
   }
 
@@ -270,6 +367,62 @@ function Home() {
           초기화
         </ResetButton>
       </SearchForm>
+
+      <AdvancedSearchContainer>
+        <AdvancedToggle
+          type="button"
+          onClick={() => setAdvancedOpen(!advancedOpen)}
+          aria-expanded={advancedOpen}
+        >
+          <span>세부 검색</span>
+          <span>{advancedOpen ? '⌃' : '⌄'}</span>
+        </AdvancedToggle>
+        
+        {advancedOpen && (
+          <>
+            <AdvancedContent>
+              <AdvancedField>
+                <label>학교 이름</label>
+                <SearchInput
+                  placeholder="학교 이름 입력"
+                  value={advancedSchool}
+                  onChange={(e) => setAdvancedSchool(e.target.value)}
+                />
+              </AdvancedField>
+        
+              <AdvancedField>
+                <label>작성자 성별</label>
+                <SearchSelect
+                  value={advancedGender}
+                  onChange={(e) => setAdvancedGender(e.target.value)}
+                >
+                  <option value="">전체</option>
+                  <option value="MALE">남성</option>
+                  <option value="FEMALE">여성</option>
+                </SearchSelect>
+              </AdvancedField>
+        
+              <AdvancedField>
+                <label>작성자 이름</label>
+                <SearchInput
+                  placeholder="작성자 이름 입력"
+                  value={advancedName}
+                  onChange={(e) => setAdvancedName(e.target.value)}
+                />
+              </AdvancedField>
+            </AdvancedContent>
+        
+            <AdvancedActions>
+              <AdvancedSearchButton
+                type="button"
+                onClick={handleAdvancedSearch}
+              >
+                세부 검색
+              </AdvancedSearchButton>
+            </AdvancedActions>
+          </>
+        )}
+      </AdvancedSearchContainer>
 
       <SectionHeader>
         <h2>합승 모집</h2>

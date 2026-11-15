@@ -5,7 +5,11 @@ import db from '../db.js';
 const router = express.Router();
 
 router.get('/', async (req, res) => {
-  const { departure, destination } = req.query;
+  const { departure, destination, school, gender, real_name } = req.query;
+
+  if (gender && !['MALE', 'FEMALE'].includes(gender)) {
+    return res.status(400).json({ message: '올바르지 않은 성별 검색 조건입니다.' });
+  }
 
   let query = `
     SELECT
@@ -19,18 +23,39 @@ router.get('/', async (req, res) => {
   const conditions = [];
   const params = [];
 
+  const routeConditions = [];
+
   if (departure) {
-    conditions.push('rp.departure LIKE ?');
+    routeConditions.push('rp.departure LIKE ?');
     params.push(`%${departure}%`);
   }
 
   if (destination) {
-    conditions.push('rp.destination LIKE ?');
+    routeConditions.push('rp.destination LIKE ?');
     params.push(`%${destination}%`);
   }
 
+  if (routeConditions.length > 0) {
+    conditions.push(`(${routeConditions.join(' OR ')})`);
+  }
+
+  if (school) {
+    conditions.push('u.school LIKE ?');
+    params.push(`%${school}%`);
+  }
+
+  if (gender) {
+    conditions.push('u.gender = ?');
+    params.push(gender);
+  }
+
+  if (real_name) {
+    conditions.push('u.real_name = ?');
+    params.push(real_name);
+  }
+
   if (conditions.length > 0) {
-    query += ` WHERE (${conditions.join(' OR ')})`;
+    query += ` WHERE ${conditions.join(' AND ')}`;
   }
 
   query += ' ORDER BY rp.created_at DESC';
