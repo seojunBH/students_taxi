@@ -83,7 +83,7 @@ const HeaderContainer = styled.header`
   align-items: center;
   padding: 18px 24px;
   border-bottom: 1px solid #e9ecef;
-  background-color: #e6e6e6;
+  background-color: #f1f1f1;
 `
 
 const Logo = styled.h1`
