@@ -4,9 +4,9 @@ import styled from 'styled-components'
 const Footer = () => {
   return (
     <FooterContainer>
-      <CompanyTitle>Students Taxi</CompanyTitle>
-      <InfoText>선린인터넷고등학교 학생 합승 모집 서비스</InfoText>
-      <InfoText>소프트웨어과 프로젝트</InfoText>
+      <CompanyTitle>Students Taxi 🚕🪢</CompanyTitle>
+      <InfoText> 교내 학생 합승 모집 서비스</InfoText>
+      <InfoText>20418 진서준&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;25s117@sunrint.hs.kr</InfoText>
       <MetaGroup>
         <MetaItem>Database <span>MySQL</span></MetaItem>
         <MetaItem>Frontend <span>React</span></MetaItem>
