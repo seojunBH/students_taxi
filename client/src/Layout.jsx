@@ -45,8 +45,9 @@ const Layout = ({
 export default Layout
 
 const PageWrapper = styled.div`
-  max-width: 600px;
-  margin: 0 auto;
+  // max-width: 600px;
+  // margin: 0 auto;
+  width: 100%;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
