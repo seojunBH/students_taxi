@@ -71,7 +71,7 @@ const ProductCreatePage = () => {
   return (
     <Container>
       <Title>합승 모집 글 작성</Title>
-      <Description>함께 이동할 학생을 모집해 보세요.</Description>
+      <Description>함께 이동할 학생을 모집해 보세요. ( * 표시는 입력 필수 사항입니다. )</Description>
 
       <Form onSubmit={handleSubmit}>
         <FormGroup>

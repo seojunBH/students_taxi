@@ -99,6 +99,10 @@ const AdvancedSearchContainer = styled.section`
   background: #f7f8fa;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
+  p {
+    font-size: 14px;
+    color: #777;
+  }
 `
 
 const AdvancedToggle = styled.button`
@@ -346,7 +350,7 @@ function Home() {
     <Container>
       <Intro>
         <h1>함께 이동할 학생을 찾아보세요.</h1>
-        <p>같은 방향으로 이동하는 학생들과 택시를 함께 이용해 보세요.</p>
+        <p>동일한 출발지 또는 도착지 내용이 포함된 게시물을 검색할 수 있어요.</p>
       </Intro>
 
       <SearchForm onSubmit={handleSearch}>
@@ -380,6 +384,7 @@ function Home() {
         
         {advancedOpen && (
           <>
+          <p>일반 검색 결과 중 세부 조건에 모두 충족되는 게시물을 찾을 수 있어요.</p>
             <AdvancedContent>
               <AdvancedField>
                 <label>학교 이름</label>

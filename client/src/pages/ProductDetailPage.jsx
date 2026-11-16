@@ -88,7 +88,7 @@ const ProductDetailPage = () => {
         <Title>{post.title}</Title>
 
         <AuthorInfo>
-          작성자: {post.real_name} ({post.gender === 'MALE' ? '남성' : '여성'} / {post.school})
+          작성자: {post.real_name} ({post.gender === 'MALE' ? '남성' : '여성'} / 학교 : {post.school})
         </AuthorInfo>
 
         <RouteBox>

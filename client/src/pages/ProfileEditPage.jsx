@@ -190,7 +190,7 @@ const ProfileEditPage = () => {
       <WithdrawalSection>
         <WithdrawalTitle>회원 탈퇴</WithdrawalTitle>
         <WithdrawalDescription>
-          탈퇴하면 계정 및 작성한 게시글이 삭제될 수 있습니다.
+          탈퇴하면 계정 및 작성한 게시글이 모두 삭제됩니다.
         </WithdrawalDescription>
         <WithdrawalForm onSubmit={handleWithdrawal}>
           <Input

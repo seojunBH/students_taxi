@@ -109,6 +109,7 @@ const ProductEditPage = () => {
   return (
     <Container>
       <Title>모집 글 수정</Title>
+      <p>( * 표시는 입력 필수 사항입니다. )</p>
 
       <Form onSubmit={handleSubmit}>
         <Label>제목 *</Label>
@@ -185,6 +186,11 @@ const Container = styled.div`
   max-width: 600px;
   margin: 30px auto;
   padding: 25px 20px;
+  p {
+    margin: 0 0 25px;
+    color: #868e96;
+    font-size: 14px;
+  }
 `
 
 const Title = styled.h2`
