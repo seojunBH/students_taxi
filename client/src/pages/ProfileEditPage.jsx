@@ -97,7 +97,7 @@ const ProfileEditPage = () => {
   const handleWithdrawal = async (e) => {
     e.preventDefault()
 
-    if (!window.confirm('정말 회원 탈퇴를 진행할까요? 작성한 게시글도 삭제될 수 있습니다.')) {
+    if (!window.confirm('정말 회원 탈퇴를 진행할까요? 작성한 게시글이 모두 삭제됩니다.')) {
       return
     }
 
